@@ -32,8 +32,16 @@ if(BUILD_TESTING)
 endif()
 
 install(
-  DIRECTORY launch scripts yolo_files
+  DIRECTORY launch scripts
   DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  PROGRAMS
+  scripts/yolov8Niagara.py
+  scripts/yolov8NiagaraBetter.py
+  launch/yolov8.launch.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()

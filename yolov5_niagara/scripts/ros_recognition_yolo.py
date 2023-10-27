@@ -7,6 +7,8 @@ from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
+from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
+
 import numpy as np
 import time
 from pathlib import Path
@@ -53,6 +55,7 @@ class Camera_subscriber(Node):
         nosave=False  # do not save images/videos
         update=False  # update all models
         name='exp'  # save results to project/name
+        self.header = None
 
         # Initialize
         set_logging()
@@ -87,8 +90,12 @@ class Camera_subscriber(Node):
             self.camera_callback,
             10)
         self.subscription  # prevent unused variable warning
-
+        
+        self.detection_pub = self.create_publisher(Detection2DArray, 'detections', 1)
+        
+    
     def camera_callback(self, data):
+        self.header = data.header
         t0 = time.time()
         img = bridge.imgmsg_to_cv2(data, "bgr8")
 
@@ -124,6 +131,9 @@ class Camera_subscriber(Node):
         # Apply NMS
         pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, self.classes, self.agnostic_nms, max_det=self.max_det)
         t2 = time_synchronized()
+        
+        detections_msg = Detection2DArray()
+        detections_msg.header = data.header  # Assuming 'data' is the incoming Image message
 
         # Apply Classifier
         if self.classify:
@@ -147,6 +157,21 @@ class Camera_subscriber(Node):
                     c = int(cls)  # integer class
                     label = None if self.hide_labels else (self.names[c] if self.hide_conf else f'{self.names[c]} {conf:.2f}')
                     plot_one_box(xyxy, img0, label=label, color=colors(c, True), line_thickness=self.line_thickness)
+                    
+                    detection = Detection2D()
+                    detection.bbox.center.x = float((xyxy[0] + xyxy[2]) / 2.0)
+                    detection.bbox.center.y = float((xyxy[1] + xyxy[3]) / 2.0)
+                    detection.bbox.size_x = float(xyxy[2] - xyxy[0])
+                    detection.bbox.size_y = float(xyxy[3] - xyxy[1])
+                    hypothesis = ObjectHypothesisWithPose()
+                    hypothesis.id = str(c)
+
+                    hypothesis.score = float(conf)
+                    detection.results.append(hypothesis)
+                    detections_msg.detections.append(detection)
+                    
+        self.detection_pub.publish(detections_msg)
+                    
 
         cv2.imshow("IMAGE", img0)
         cv2.waitKey(4)    
