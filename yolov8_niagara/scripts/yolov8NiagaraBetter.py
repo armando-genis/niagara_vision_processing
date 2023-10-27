@@ -29,7 +29,7 @@ class Camera_subscriber(Node):
         super().__init__('camera_subscriber')
         
         device = "cpu" # cpu or cuda "cuda:0"
-        self.threshold = 0.45
+        self.threshold = 0.40
         self.enable = True
         self.device = device
 
