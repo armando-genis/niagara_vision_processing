@@ -22,6 +22,15 @@ const float SCORE_THRESHOLD = 0.2;
 const float NMS_THRESHOLD = 0.4;
 const float CONFIDENCE_THRESHOLD = 0.4;
 
+
+struct Detection
+{
+    int class_id;
+    float confidence;
+    cv::Rect box;
+};
+
+
 class yolov8 : public rclcpp::Node
 {
 private:
@@ -30,6 +39,10 @@ private:
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg);
     void load_net(cv::dnn::Net &net, bool is_cuda);
     std::vector<std::string> load_class_list();
+    void detect_and_display(cv::Mat &image);
+    void detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &output, const std::vector<std::string> &className);
+    cv::Mat format_yolov5(const cv::Mat &source);
+
 
     bool is_cuda = false;
     std::vector<std::string> class_list;
@@ -59,21 +72,27 @@ yolov8::~yolov8()
     cv::destroyAllWindows();
 }
 
-void yolov8::image_callback(const sensor_msgs::msg::Image::SharedPtr msg){
-    // Convert ROS Image message to cv::Mat manually
+void yolov8::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
+{
     int type = (msg->encoding == "mono8") ? CV_8UC1 : CV_8UC3;
     cv::Mat image(msg->height, msg->width, type, &msg->data[0]);
 
-    // If the image is in RGB format, convert it to BGR
     if (msg->encoding == "rgb8") {
         cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
     }
 
-    // Display the image
+    std::vector<Detection> detections;
+    detect(image, net, detections, class_list);
+    for (auto & detection : detections) {
+        const auto color = colors[detection.class_id % colors.size()];
+        cv::rectangle(image, detection.box, color, 3);
+        cv::rectangle(image, cv::Point(detection.box.x, detection.box.y - 20), cv::Point(detection.box.x + detection.box.width, detection.box.y), color, cv::FILLED);
+        cv::putText(image, class_list[detection.class_id].c_str(), cv::Point(detection.box.x, detection.box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
+    }
+
     cv::imshow("Received Image", image);
     cv::waitKey(1);
 }
-
 
 std::vector<std::string> yolov8::load_class_list()
 {
@@ -106,6 +125,104 @@ void yolov8::load_net(cv::dnn::Net &net, bool is_cuda)
     net = result;
 }
 
+
+void yolov8::detect_and_display(cv::Mat &image)
+{
+
+
+    std::vector<Detection> output;
+    detect(image, net, output, class_list);
+
+    int detections = output.size();
+
+    for (int i = 0; i < detections; ++i)
+    {
+        auto detection = output[i];
+        auto box = detection.box;
+        auto classId = detection.class_id;
+        const auto color = colors[classId % colors.size()];
+        cv::rectangle(image, box, color, 3);
+        cv::rectangle(image, cv::Point(box.x, box.y - 20), cv::Point(box.x + box.width, box.y), color, cv::FILLED);
+        cv::putText(image, class_list[classId].c_str(), cv::Point(box.x, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
+    }
+}
+
+
+cv::Mat yolov8::format_yolov5(const cv::Mat &source) {
+    int col = source.cols;
+    int row = source.rows;
+    int _max = MAX(col, row);
+    cv::Mat result = cv::Mat::zeros(_max, _max, CV_8UC3);
+    source.copyTo(result(cv::Rect(0, 0, col, row)));
+    return result;
+}
+
+void yolov8::detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &output, const std::vector<std::string> &className)
+{
+    cv::Mat blob;
+
+    auto input_image = format_yolov5(image);
+    
+    cv::dnn::blobFromImage(input_image, blob, 1./255., cv::Size(INPUT_WIDTH, INPUT_HEIGHT), cv::Scalar(), true, false);
+    net.setInput(blob);
+    std::vector<cv::Mat> outputs;
+    net.forward(outputs, net.getUnconnectedOutLayersNames());
+
+    float x_factor = input_image.cols / INPUT_WIDTH;
+    float y_factor = input_image.rows / INPUT_HEIGHT;
+    
+    float *data = (float *)outputs[0].data;
+
+    const int dimensions = 85;
+    const int rows = 25200;
+    
+    std::vector<int> class_ids;
+    std::vector<float> confidences;
+    std::vector<cv::Rect> boxes;
+
+    for (int i = 0; i < rows; ++i) {
+
+        float confidence = data[4];
+        if (confidence >= CONFIDENCE_THRESHOLD) {
+
+            float * classes_scores = data + 5;
+            cv::Mat scores(1, className.size(), CV_32FC1, classes_scores);
+            cv::Point class_id;
+            double max_class_score;
+            minMaxLoc(scores, 0, &max_class_score, 0, &class_id);
+            if (max_class_score > SCORE_THRESHOLD) {
+
+                confidences.push_back(confidence);
+
+                class_ids.push_back(class_id.x);
+
+                float x = data[0];
+                float y = data[1];
+                float w = data[2];
+                float h = data[3];
+                int left = int((x - 0.5 * w) * x_factor);
+                int top = int((y - 0.5 * h) * y_factor);
+                int width = int(w * x_factor);
+                int height = int(h * y_factor);
+                boxes.push_back(cv::Rect(left, top, width, height));
+            }
+
+        }
+
+        data += 85;
+
+    }
+    std::vector<int> nms_result;
+    cv::dnn::NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, nms_result);
+    for (size_t i = 0; i < nms_result.size(); i++) {
+        int idx = nms_result[i];
+        Detection result;
+        result.class_id = class_ids[idx];
+        result.confidence = confidences[idx];
+        result.box = boxes[idx];
+        output.push_back(result);
+    }
+}
 
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
