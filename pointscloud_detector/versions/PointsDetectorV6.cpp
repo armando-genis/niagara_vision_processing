@@ -267,37 +267,30 @@ visualization_msgs::msg::MarkerArray PointsDetector::createMarkerArray(const vis
 
     for(size_t i = 0; i < detections3d_msg.detections.size(); ++i)
     {
-        if (std::isfinite(detections3d_msg.detections[i].bbox.size.x) &&
-        std::isfinite(detections3d_msg.detections[i].bbox.size.y) &&
-        std::isfinite(detections3d_msg.detections[i].bbox.size.z))
-        {
-            const auto& detection = detections3d_msg.detections[i];
-            const auto& bbox = detection.bbox;
+        const auto& detection = detections3d_msg.detections[i];
+        const auto& bbox = detection.bbox;
 
-            visualization_msgs::msg::Marker marker;
-            marker.header.frame_id = "velodyne";
-            marker.header.stamp = detections3d_msg.header.stamp;
-            marker.ns = "bounding_boxes";
-            marker.id = i;
-            marker.type = visualization_msgs::msg::Marker::CUBE;
-            marker.action = visualization_msgs::msg::Marker::ADD;
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "velodyne";
+        marker.header.stamp = detections3d_msg.header.stamp;
+        marker.ns = "bounding_boxes";
+        marker.id = i;
+        marker.type = visualization_msgs::msg::Marker::CUBE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
 
-            marker.pose.position = bbox.center.position;
-            marker.pose.orientation = bbox.center.orientation;
+        marker.pose.position = bbox.center.position;
+        marker.pose.orientation = bbox.center.orientation;
 
-            marker.scale.x = bbox.size.x;
-            marker.scale.y = bbox.size.y;
-            marker.scale.z = bbox.size.z;
+        marker.scale.x = bbox.size.x;
+        marker.scale.y = bbox.size.y;
+        marker.scale.z = bbox.size.z;
 
-            
+        marker.color.r = 1.0;
+        marker.color.g = 0.0;
+        marker.color.b = 0.0;
+        marker.color.a = 0.5;
 
-            marker.color.r = 1.0;
-            marker.color.g = 0.0;
-            marker.color.b = 0.0;
-            marker.color.a = 0.5;
-
-            marker_array.markers.push_back(marker);
-        }  
+        marker_array.markers.push_back(marker);
     }
 
     return marker_array;
@@ -355,20 +348,10 @@ std::tuple<vision_msgs::msg::Detection3DArray, sensor_msgs::msg::PointCloud2> Po
 
             // debbug
 
-            RCLCPP_INFO(this->get_logger(), "Detection: %d", detections3d_msg.detections.size());
-
-            
-            // box of the detection3d  The persons apper to be infinite
-            RCLCPP_INFO(this->get_logger(), "Detection: %f", detections3d_msg.detections[0].bbox.size.x);
-            RCLCPP_INFO(this->get_logger(), "Detection: %f", detections3d_msg.detections[0].bbox.size.y);
-            RCLCPP_INFO(this->get_logger(), "Detection: %f", detections3d_msg.detections[0].bbox.size.z);
-
-
-            // RCLCPP_INFO(this->get_logger(), "Detection: %d", combine_detection_cloud.size());
-
+            // RCLCPP_INFO(this->get_logger(), "Detection: %d", detections3d_msg.detections.size());
             // sizes of detections3d_msg
 
-            // RCLCPP_INFO(this->get_logger(), "Detection: %s", detection.results[0].id.c_str());
+            RCLCPP_INFO(this->get_logger(), "Detection: %s", detection.results[0].id.c_str());
         }
 
     }
