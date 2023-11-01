@@ -38,6 +38,8 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/filters/extract_indices.h>
 
+
+
 using namespace std;
 using namespace message_filters::sync_policies;
 
@@ -52,7 +54,7 @@ private:
 
     std::tuple<vision_msgs::msg::Detection3DArray, sensor_msgs::msg::PointCloud2> projectCloud(const pcl::PointCloud<pcl::PointXYZ>& cloud, const vision_msgs::msg::Detection2DArray::SharedPtr& detections2d_msg, const std_msgs::msg::Header& header);
 
-    float _cluster_tolerance = 0.5;
+    double _cluster_tolerance = 0.3;
     int _min_cluster_size = 50;
     int _max_cluster_size =  25000;
 
@@ -65,7 +67,8 @@ private:
 
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-    
+
+
     cv::Mat cameraMatrix;
     cv::Mat distCoeffs;
 
@@ -79,6 +82,9 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _detection_cloud_pub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr _marker_pub;
     // rclcpp::TimerBase::SharedPtr timer_;
+
+    std::string camera_frame_id = "camera_frame";
+
 
 public:
     PointsDetector(/* args */);
@@ -197,9 +203,9 @@ pcl::PointCloud<pcl::PointXYZ> PointsDetector::euclideanClusterExtraction(const 
     float min_distance = std::numeric_limits<float>::max();
     tree->setInputCloud(cloud.makeShared());
     ec.setInputCloud(cloud.makeShared());
-    ec.setClusterTolerance(_cluster_tolerance);  // Assuming _cluster_tolerance is a class member
-    ec.setMinClusterSize(_min_cluster_size);    // Assuming _min_cluster_size is a class member
-    ec.setMaxClusterSize(_max_cluster_size);    // Assuming _max_cluster_size is a class member
+    ec.setClusterTolerance(_cluster_tolerance);  
+    ec.setMinClusterSize(_min_cluster_size);
+    ec.setMaxClusterSize(_max_cluster_size);
     ec.setSearchMethod(tree);
     ec.extract(cluster_indices);
     for (const auto& cluster_indice : cluster_indices)
@@ -233,14 +239,23 @@ void PointsDetector::createBoundingBox(
     Eigen::Vector4f bbox_center;
     Eigen::Vector4f transformed_bbox_center;
     Eigen::Affine3f transform;
+
+    // if (cloud.points.size() < 3) {
+    //     RCLCPP_WARN(this->get_logger(), "Insufficient points in the cloud for meaningful computations");
+    // }
+
     pcl::compute3DCentroid(cloud, centroid);
+    // Print centroit 
+    RCLCPP_INFO(this->get_logger(), "Centroid x: %f", centroid[0]);
+    
     double theta = -atan2(centroid[1], sqrt(pow(centroid[0], 2) + pow(centroid[2], 2)));
     transform = Eigen::Affine3f::Identity();
     transform.rotate(Eigen::AngleAxisf(theta, Eigen::Vector3f::UnitZ()));
     pcl::transformPointCloud(cloud, transformed_cloud, transform);
     pcl::getMinMax3D(transformed_cloud, min_pt, max_pt);
-    transformed_bbox_center =
-        Eigen::Vector4f((min_pt.x + max_pt.x) / 2, (min_pt.y + max_pt.y) / 2, (min_pt.z + max_pt.z) / 2, 1);
+    transformed_bbox_center = Eigen::Vector4f((min_pt.x + max_pt.x) / 2, (min_pt.y + max_pt.y) / 2, (min_pt.z + max_pt.z) / 2, 1);
+
+
     bbox_center = transform.inverse() * transformed_bbox_center;
     detection3d.bbox.center.position.x = bbox_center[0];
     detection3d.bbox.center.position.y = bbox_center[1];
@@ -286,8 +301,7 @@ visualization_msgs::msg::MarkerArray PointsDetector::createMarkerArray(const vis
             marker.scale.y = bbox.size.y;
             marker.scale.z = bbox.size.z;
 
-            
-
+        
             marker.color.r = 1.0;
             marker.color.g = 0.0;
             marker.color.b = 0.0;
@@ -315,7 +329,8 @@ std::tuple<vision_msgs::msg::Detection3DArray, sensor_msgs::msg::PointCloud2> Po
     for (const auto& detection : detections2d_msg->detections)
     {
         // RCLCPP_INFO(this->get_logger(), "Detection: %s", detection.results[0].id.c_str());
-
+        // RCLCPP_INFO(this->get_logger(), "Detection part1 x: %f", detection.bbox.size_x);
+        // RCLCPP_INFO(this->get_logger(), "Detection part1 y: %f", detection.bbox.size_y);
         // RCLCPP_INFO(this->get_logger(), "Point: %f", cloud.points[0].x);
         for (const auto& point : cloud.points)
         {
@@ -324,7 +339,7 @@ std::tuple<vision_msgs::msg::Detection3DArray, sensor_msgs::msg::PointCloud2> Po
             std::vector<cv::Point2f> points2D;
 
             project3DPointsTo2D(points3D, points2D);
-            cv::Point2d uv = points2D[0];  
+            cv::Point2d uv = points2D[0];
 
             if (point.z > 0 && uv.x > 0 && uv.x >= detection.bbox.center.x - detection.bbox.size_x / 2 &&
                 uv.x <= detection.bbox.center.x + detection.bbox.size_x / 2 &&
@@ -332,14 +347,25 @@ std::tuple<vision_msgs::msg::Detection3DArray, sensor_msgs::msg::PointCloud2> Po
                 uv.y <= detection.bbox.center.y + detection.bbox.size_y / 2)
             {
                 detection_cloud_raw.points.push_back(point);
+                // Size of the detection_cloud_raw
+                // RCLCPP_INFO(this->get_logger(), "Detection: %d", detection_cloud_raw.points.size());
                 // debbug
                 // RCLCPP_INFO(this->get_logger(), "Detection: %s", detection.results[0].id.c_str());
+
+                // print the detection bbox 
+
             }
+            
 
         }
+        RCLCPP_INFO(this->get_logger(), "detection_cloud_raw : %d", detection_cloud_raw.points.size());
+
         detection_cloud = cloud2TransformedCloud(detection_cloud_raw, header);
+        // print size of detection_cloud
+        RCLCPP_INFO(this->get_logger(), "detection_cloud : %d", detection_cloud.points.size());
         if (!detection_cloud.points.empty())
         {
+            // The error comes froms here -> the detection_cloud is empty
             closest_detection_cloud = euclideanClusterExtraction(detection_cloud);
             // debbug detection3d_msg size
             
@@ -352,13 +378,13 @@ std::tuple<vision_msgs::msg::Detection3DArray, sensor_msgs::msg::PointCloud2> Po
 
             // debbug
 
-            RCLCPP_INFO(this->get_logger(), "Detection: %d", detections3d_msg.detections.size());
+            // RCLCPP_INFO(this->get_logger(), "Detection register: %d", detections3d_msg.detections.size());
 
             
             // box of the detection3d  The persons apper to be infinite
-            RCLCPP_INFO(this->get_logger(), "Detection: %f", detections3d_msg.detections[0].bbox.size.x);
-            RCLCPP_INFO(this->get_logger(), "Detection: %f", detections3d_msg.detections[0].bbox.size.y);
-            RCLCPP_INFO(this->get_logger(), "Detection: %f", detections3d_msg.detections[0].bbox.size.z);
+            // RCLCPP_INFO(this->get_logger(), "Detection register x: %f", detections3d_msg.detections[0].bbox.size.x);
+            // RCLCPP_INFO(this->get_logger(), "Detection register y: %f", detections3d_msg.detections[0].bbox.size.y);
+            // RCLCPP_INFO(this->get_logger(), "Detection register z: %f", detections3d_msg.detections[0].bbox.size.z);
 
 
             // RCLCPP_INFO(this->get_logger(), "Detection: %d", combine_detection_cloud.size());

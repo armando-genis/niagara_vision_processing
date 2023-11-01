@@ -38,6 +38,8 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/filters/extract_indices.h>
 
+
+
 using namespace std;
 using namespace message_filters::sync_policies;
 
@@ -53,7 +55,7 @@ private:
     std::tuple<vision_msgs::msg::Detection3DArray, sensor_msgs::msg::PointCloud2> projectCloud(const pcl::PointCloud<pcl::PointXYZ>& cloud, const vision_msgs::msg::Detection2DArray::SharedPtr& detections2d_msg, const std_msgs::msg::Header& header);
 
     float _cluster_tolerance = 0.5;
-    int _min_cluster_size = 50;
+    int _min_cluster_size = 100;
     int _max_cluster_size =  25000;
 
 
@@ -65,7 +67,8 @@ private:
 
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-    
+
+
     cv::Mat cameraMatrix;
     cv::Mat distCoeffs;
 
