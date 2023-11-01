@@ -30,7 +30,7 @@ ros2 launch yolov8_niagara yolov8.launch.py
 ```bash
 colcon build --packages-select pointscloud_detector
 source install/setup.bash
-ros2 launch pointscloud_detector 
+ros2 launch pointscloud_detector pcloudsDetec.launch.py
 ```
 
 
@@ -44,6 +44,9 @@ sudo apt-get install ros-foxy-vision-msgs
 sudo apt-get install ros-foxy-image-geometry
 
 ```
+
+## To do
+From the v4 make that the function cloud2TransformedCloud and msg2TransformedCloud do no depends on _cam_model
 ## Links
 
  - [Message Filter](https://docs.ros.org/en/iron/Tutorials/Intermediate/Tf2/Using-Stamped-Datatypes-With-Tf2-Ros-MessageFilter.html#build)
