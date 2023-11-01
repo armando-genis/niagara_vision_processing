@@ -11,6 +11,7 @@ def generate_launch_description():
             package='pointscloud_detector',
             executable='pointsDectector_node',
             name='pointsDectector_node',
-            output='screen'
+            output='screen',
+            parameters=[{'use_sim_time': True}]
         )
     ])

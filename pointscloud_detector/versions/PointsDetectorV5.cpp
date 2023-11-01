@@ -48,7 +48,7 @@ class PointsDetector : public rclcpp::Node
 private:
     typedef ApproximateTime<sensor_msgs::msg::CameraInfo, sensor_msgs::msg::PointCloud2, vision_msgs::msg::Detection2DArray> SyncPolicy;
     // Callbacks
-    // void timer_callback();
+    void timer_callback();
     void callback_sync(const sensor_msgs::msg::CameraInfo::SharedPtr cam, const sensor_msgs::msg::PointCloud2::SharedPtr cloud, const vision_msgs::msg::Detection2DArray::SharedPtr detections);
     pcl::PointCloud<pcl::PointXYZ> msg2TransformedCloud(const sensor_msgs::msg::PointCloud2::SharedPtr& cloud_msg);
 
@@ -81,7 +81,7 @@ private:
     rclcpp::Publisher<vision_msgs::msg::Detection3DArray>::SharedPtr _detection3d_pub;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _detection_cloud_pub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr _marker_pub;
-    // rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr timer_;
 
 public:
     PointsDetector(/* args */);
@@ -98,7 +98,8 @@ PointsDetector::PointsDetector(/* args */) : Node("PointsDetector_node")
     sync = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), cam_sub, lidar_sub, det_sub);
     sync->registerCallback(&PointsDetector::callback_sync, this);
     
-    // timer_ = this->create_wall_timer(std::chrono::milliseconds(200), std::bind(&PointsDetector::timer_callback, this));
+
+    timer_ = this->create_wall_timer(std::chrono::milliseconds(200), std::bind(&PointsDetector::timer_callback, this));
 
     _detection3d_pub = this->create_publisher<vision_msgs::msg::Detection3DArray>("/detections3d", 10);
     _detection_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("/detection_cloud", 10);
@@ -117,10 +118,10 @@ void PointsDetector::initialize()
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, shared_from_this(), false);
 }
 
-// void PointsDetector::timer_callback()
-// {
+void PointsDetector::timer_callback()
+{
 
-// }
+}
 
 void PointsDetector::callback_sync(const sensor_msgs::msg::CameraInfo::SharedPtr cam, const sensor_msgs::msg::PointCloud2::SharedPtr cloud, const vision_msgs::msg::Detection2DArray::SharedPtr detections)
 {
