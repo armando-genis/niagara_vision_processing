@@ -20,6 +20,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(vision_msgs REQUIRED)
+
 find_package(OpenCV REQUIRED)
 
 
@@ -39,7 +41,7 @@ add_executable(yolov5_node src/yolov5.cpp)
 # Link with OpenCV libraries
 target_link_libraries(yolov5_node ${OpenCV_LIBS})
 
-ament_target_dependencies(yolov5_node rclcpp std_msgs sensor_msgs)
+ament_target_dependencies(yolov5_node rclcpp std_msgs sensor_msgs vision_msgs)
 
 install(TARGETS yolov5_node
   DESTINATION lib/${PROJECT_NAME})

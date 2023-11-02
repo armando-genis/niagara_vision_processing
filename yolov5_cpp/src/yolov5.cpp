@@ -5,6 +5,10 @@
 #include <opencv2/dnn/dnn.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include "vision_msgs/msg/detection2_d.hpp"
+#include "vision_msgs/msg/detection2_d_array.hpp"
+#include "vision_msgs/msg/object_hypothesis_with_pose.hpp"
+
 #include <fstream>
 #include <chrono>
 #include <iomanip>
@@ -33,6 +37,8 @@ class yolov5 : public rclcpp::Node
 private:
     /* data */
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
+    rclcpp::Publisher<vision_msgs::msg::Detection2DArray>::SharedPtr publisher_;
+
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg);
     void load_net(cv::dnn::Net &net, bool is_cuda);
     std::vector<std::string> load_class_list();
@@ -56,8 +62,12 @@ yolov5::yolov5(/* args */): Node("yolov5_node")
     
     subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
         "/zed2/image_raw", 10, std::bind(&yolov5::image_callback, this, std::placeholders::_1));
+    
+    publisher_ = this->create_publisher<vision_msgs::msg::Detection2DArray>("detections", 10);
+
 
     cv::namedWindow("Received Image", cv::WINDOW_AUTOSIZE);
+
 
     class_list = load_class_list();
     load_net(net, is_cuda);
@@ -78,14 +88,37 @@ void yolov5::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
         cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
     }
 
+    vision_msgs::msg::Detection2DArray detections_msg;
+    detections_msg.header = msg->header; 
+
     std::vector<Detection> detections;
     detect(image, net, detections, class_list);
     for (auto & detection : detections) {
+        vision_msgs::msg::Detection2D detection_msg;
+        vision_msgs::msg::ObjectHypothesisWithPose hypothesis;
+
         const auto color = colors[detection.class_id % colors.size()];
         cv::rectangle(image, detection.box, color, 3);
         cv::rectangle(image, cv::Point(detection.box.x, detection.box.y - 20), cv::Point(detection.box.x + detection.box.width, detection.box.y), color, cv::FILLED);
         cv::putText(image, class_list[detection.class_id].c_str(), cv::Point(detection.box.x, detection.box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
+
+        // Populate the bounding box information
+        detection_msg.bbox.center.x = detection.box.x + detection.box.width / 2.0;
+        detection_msg.bbox.center.y = detection.box.y + detection.box.height / 2.0;
+        detection_msg.bbox.size_x = detection.box.width;
+        detection_msg.bbox.size_y = detection.box.height;
+
+        // Populate the class and score information
+        hypothesis.id = detection.class_id;
+        hypothesis.score = detection.confidence;
+        detection_msg.results.push_back(hypothesis);
+
+        // Add the detection message to the array
+        detections_msg.detections.push_back(detection_msg);
+
     }
+    publisher_->publish(detections_msg);
+
 
     cv::imshow("Received Image", image);
     cv::waitKey(1);

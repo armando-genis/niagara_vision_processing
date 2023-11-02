@@ -12,5 +12,6 @@ def generate_launch_description():
             executable='yolov5_node',
             name='yolov5_node',
             output='screen',
+            parameters=[{'use_sim_time': True}]
         )
     ])

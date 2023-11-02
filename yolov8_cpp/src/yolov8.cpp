@@ -5,6 +5,7 @@
 #include <opencv2/dnn/dnn.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+
 #include <fstream>
 #include <chrono>
 #include <iomanip>
@@ -33,6 +34,9 @@ class yolov8 : public rclcpp::Node
 private:
     /* data */
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
+
+
+
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg);
     void load_net(cv::dnn::Net &net, bool is_cuda);
     std::vector<std::string> load_class_list();
