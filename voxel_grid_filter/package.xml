@@ -11,6 +11,14 @@
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+
+  <!-- External -->
+  <depend>eigen</depend>
+  <depend>opencv</depend>
+  <depend>pcl_conversions</depend>
+  <depend>pcl</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
