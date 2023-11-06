@@ -30,7 +30,7 @@ class VoxelGrid : public rclcpp::Node
 private:
     // voxelgrid resolution
     float voxel_leaf_size_x_ = 0.2;
-    float voxel_leaf_size_y_ = 0.2;
+    float voxel_leaf_size_y_ = 0.1;
     float voxel_leaf_size_z_ = 0.2; 
     using PointCloudMsg = sensor_msgs::msg::PointCloud2;
     using PointCloudMsg2 = sensor_msgs::msg::PointCloud2;
@@ -38,11 +38,11 @@ private:
     
     // ROI boundaries
     double roi_max_x_ = 15.0; //FRONT THE CAR
-    double roi_max_y_ = 10.0;  //LEFT THE CAR
+    double roi_max_y_ = 8.0;  //LEFT THE CAR
     double roi_max_z_ = 2.0; //UP THE VELODYNE
 
     double roi_min_x_ = -1.0; //BACK THE CAR
-    double roi_min_y_ = -10.0; //RIGHT THE CAR
+    double roi_min_y_ = -8.0; //RIGHT THE CAR
     double roi_min_z_ = -2.5; //DOWN THE VELODYNE
 
     Eigen::Vector4f ROI_MAX_POINT, ROI_MIN_POINT;
@@ -81,6 +81,9 @@ VoxelGrid::~VoxelGrid()
 
 void VoxelGrid::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
 {
+
+    // =========================== MAKE A DOWN SAMPLYNG VOXEL GRID
+
     // pcl::PCLPointCloud2 pcl_pc2;
     // pcl_conversions::toPCL(*msg, pcl_pc2);
     // pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -99,28 +102,51 @@ void VoxelGrid::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPt
     // // Publish the down sampled data
     // down_sampling_pub_->publish(output);
 
+    // =========================== MAKE A DOWN SAMPLYNG FIST AND THE ROI FILTERING
+
+    // pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(
+    //     new pcl::PointCloud<pcl::PointXYZI>);
+
+    // pcl::fromROSMsg(*msg, *input_cloud);
+
+    // // create voxel grid object
+    // pcl::VoxelGrid<pcl::PointXYZI> vg;
+    // vg.setInputCloud(input_cloud);
+    // vg.setLeafSize(voxel_leaf_size_x_, voxel_leaf_size_y_, voxel_leaf_size_z_);
+
+    // pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    // vg.filter(*filtered_cloud);
+
+    // // convert back to ROS datatype
+    // VoxelGrid::PointCloudMsg downsampled_cloud_msg;
+    // pcl::toROSMsg(*filtered_cloud, downsampled_cloud_msg);
+
+    // down_sampling_pub_->publish(downsampled_cloud_msg);
+
+    // // Apply ROI filtering
+    // pcl::CropBox<pcl::PointXYZI> roi_filter;
+    // roi_filter.setInputCloud(filtered_cloud);
+    // roi_filter.setMax(ROI_MAX_POINT);
+    // roi_filter.setMin(ROI_MIN_POINT);
+
+    // pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZI>);
+    // roi_filter.filter(*cloud_roi);
+
+    // VoxelGrid::PointCloudMsg2 downsampled_cloud_msg_rio;
+    // pcl::toROSMsg(*cloud_roi, downsampled_cloud_msg_rio);
+
+    // roi_sampling_pub_->publish(downsampled_cloud_msg_rio);
+
+    // ============================= MAKE A ROY FILTER AND THEN THE DOWNSAMPLING OF VOXEL GRID
+
     pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud(
         new pcl::PointCloud<pcl::PointXYZI>);
 
     pcl::fromROSMsg(*msg, *input_cloud);
 
-    // create voxel grid object
-    pcl::VoxelGrid<pcl::PointXYZI> vg;
-    vg.setInputCloud(input_cloud);
-    vg.setLeafSize(voxel_leaf_size_x_, voxel_leaf_size_y_, voxel_leaf_size_z_);
-
-    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
-    vg.filter(*filtered_cloud);
-
-    // convert back to ROS datatype
-    VoxelGrid::PointCloudMsg downsampled_cloud_msg;
-    pcl::toROSMsg(*filtered_cloud, downsampled_cloud_msg);
-
-    down_sampling_pub_->publish(downsampled_cloud_msg);
-
     // Apply ROI filtering
     pcl::CropBox<pcl::PointXYZI> roi_filter;
-    roi_filter.setInputCloud(filtered_cloud);
+    roi_filter.setInputCloud(input_cloud);
     roi_filter.setMax(ROI_MAX_POINT);
     roi_filter.setMin(ROI_MIN_POINT);
 
@@ -131,6 +157,20 @@ void VoxelGrid::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPt
     pcl::toROSMsg(*cloud_roi, downsampled_cloud_msg_rio);
 
     roi_sampling_pub_->publish(downsampled_cloud_msg_rio);
+
+    // create voxel grid object
+    pcl::VoxelGrid<pcl::PointXYZI> vg;
+    vg.setInputCloud(cloud_roi);
+    vg.setLeafSize(voxel_leaf_size_x_, voxel_leaf_size_y_, voxel_leaf_size_z_);
+
+    pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    vg.filter(*filtered_cloud);
+
+    // convert back to ROS datatype
+    VoxelGrid::PointCloudMsg downsampled_cloud_msg;
+    pcl::toROSMsg(*filtered_cloud, downsampled_cloud_msg);
+
+    down_sampling_pub_->publish(downsampled_cloud_msg);
 
 }
 

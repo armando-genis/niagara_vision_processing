@@ -89,7 +89,7 @@ public:
 PointsDetector::PointsDetector(/* args */) : Node("PointsDetector_node")
 {
     cam_sub.subscribe(this, "/zed2/camera_info");
-    lidar_sub.subscribe(this, "/points_raw");
+    lidar_sub.subscribe(this, "/points_roi");
     det_sub.subscribe(this, "/detections");
 
     sync = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), cam_sub, lidar_sub, det_sub);
