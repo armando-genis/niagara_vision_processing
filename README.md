@@ -1,5 +1,5 @@
-# niagara_vision_processing
- 
+# Vision_pkgs_ROS2
+Ros2 packages for object detection using Camera and Lidar
 
   ## Set up ROS2
 ```bash
@@ -8,18 +8,27 @@ source /opt/ros/foxy/setup.bash #for ros2 foxy
 source /opt/ros/humble/setup.bash #for ro2 humble
 ```
 
+# Voxel Grid Filter
+```bash
+colcon build --packages-select voxel_grid_filter
+source install/setup.bash
+ros2 launch voxel_grid_filter filter.launch.py
+```
+
 # Yolo version 5 - cpp
 ```bash
 colcon build --packages-select yolov5_cpp
 source install/setup.bash
 ros2 launch yolov5_cpp yolov5cpp.launch.py
 ```
+
 # Yolo version 5 - Python
 ```bash
 colcon build --packages-select yolov5_niagara
 source install/setup.bash
 ros2 launch yolov5_niagara yolov5.launch.py
 ```
+
 # Yolo version 8 - Python
 ```bash
 colcon build --packages-select yolov8_niagara
@@ -34,12 +43,6 @@ source install/setup.bash
 ros2 launch pointscloud_detector pcloudsDetec.launch.py
 ```
 
-# Voxel Grid Filter
-```bash
-colcon build --packages-select voxel_grid_filter
-source install/setup.bash
-ros2 launch voxel_grid_filter filter.launch.py
-```
 
 ## Install for usage
 OpenCV 4.5.4+
@@ -50,8 +53,9 @@ sudo apt-get install libpcl-dev
 sudo apt-get install ros-foxy-vision-msgs
 sudo apt-get install ros-foxy-image-geometry
 
+sudo apt install python3-pip
+pip3 install ultalytics
 ```
-
 ## To do
 From the v4 make that the function cloud2TransformedCloud and msg2TransformedCloud do no depends on _cam_model
 
