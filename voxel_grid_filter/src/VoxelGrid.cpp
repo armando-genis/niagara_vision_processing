@@ -30,8 +30,8 @@ class VoxelGrid : public rclcpp::Node
 private:
     // voxelgrid resolution
     float voxel_leaf_size_x_ = 0.2;
-    float voxel_leaf_size_y_ = 0.1;
-    float voxel_leaf_size_z_ = 0.2; 
+    float voxel_leaf_size_y_ = 0.05;
+    float voxel_leaf_size_z_ = 0.1; 
     using PointCloudMsg = sensor_msgs::msg::PointCloud2;
     using PointCloudMsg2 = sensor_msgs::msg::PointCloud2;
 
@@ -97,7 +97,7 @@ void VoxelGrid::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPt
     // // Convert the pcl/PointCloud data back to sensor_msgs/PointCloud2
     // sensor_msgs::msg::PointCloud2 output;
     // pcl::toROSMsg(*cloud_filtered, output);
-    // output.header.frame_id = msg->header.frame_id;  // Set the header values of the downsampled point cloud to be the same as the input point cloud
+    // output.header.frame_id = msg->header.frame_id;  
 
     // // Publish the down sampled data
     // down_sampling_pub_->publish(output);
@@ -160,7 +160,7 @@ void VoxelGrid::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPt
 
     // create voxel grid object
     pcl::VoxelGrid<pcl::PointXYZI> vg;
-    vg.setInputCloud(cloud_roi);
+    vg.setInputCloud(input_cloud);
     vg.setLeafSize(voxel_leaf_size_x_, voxel_leaf_size_y_, voxel_leaf_size_z_);
 
     pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud(new pcl::PointCloud<pcl::PointXYZI>);
